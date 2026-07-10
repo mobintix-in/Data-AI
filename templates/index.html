@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>  
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Business Search & Scraper</title>
+    <!-- FontAwesome Icons for modern aesthetic -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1><i class="fa-solid fa-wand-magic-sparkles" style="color: #2dd4bf; margin-right: 10px;"></i>LeadScrape AI</h1>
+            <p>Scrape local business data & emails directly into Excel & PostgreSQL.</p>
+        </div>
+
+        <form id="searchForm" method="POST" action="/search">
+            <div class="form-group">
+                <label for="country">Country</label>
+                <div class="input-container">
+                    <input type="text" id="country" name="country" class="form-control" placeholder="e.g. India, Germany" required>
+                    <i class="fa-solid fa-globe"></i>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="city">City</label>
+                <div class="input-container">
+                    <input type="text" id="city" name="city" class="form-control" placeholder="e.g. Surat, Berlin" required>
+                    <i class="fa-solid fa-city"></i>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="niche">Niche / Business Type</label>
+                <div class="input-container">
+                    <input type="text" id="niche" name="niche" class="form-control" placeholder="e.g. Street Food, Teacher" required>
+                    <i class="fa-solid fa-briefcase"></i>
+                </div>
+            </div>
+
+            <button type="submit" id="searchBtn" class="btn-submit">
+                <span>Start Deep Search</span>
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+        </form>
+    </div>
+
+    <!-- Beautiful Loading Overlay with Process Steps -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="loader-ring">
+                <div></div><div></div><div></div><div></div>
+            </div>
+            <div class="loading-title">Extracting Leads...</div>
+            <p class="loading-text">We are running a headless browser to gather matching listings from Google Maps and searching for contact emails on their websites. This may take up to a minute.</p>
+            
+            <div class="loading-status-steps">
+                <div id="step-init" class="status-step active">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i>
+                    <span>Initializing browser automation...</span>
+                </div>
+                <div id="step-scrape" class="status-step">
+                    <i class="fa-regular fa-circle"></i>
+                    <span>Extracting business coordinates & links...</span>
+                </div>
+                <div id="step-emails" class="status-step">
+                    <i class="fa-regular fa-circle"></i>
+                    <span>Crawling websites for contact emails...</span>
+                </div>
+                <div id="step-db" class="status-step">
+                    <i class="fa-regular fa-circle"></i>
+                    <span>Saving to PostgreSQL & Excel...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal matching exact specifications -->
+    <div id="successModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="success-icon-container">
+                <i class="fa-solid fa-check"></i>
+            </div>
+            <div class="modal-title">Extraction Complete</div>
+            <div class="modal-message" id="modalMessage">
+                Search started successfully. Your search data has been saved to search_results.xlsx and inserted into the PostgreSQL table search_results.
+            </div>
+            <div class="modal-actions">
+                <button id="downloadBtn" class="btn-download">
+                    <i class="fa-regular fa-file-excel"></i>
+                    <span>Open Excel file</span>
+                </button>
+                <button id="closeModalBtn" class="btn-close">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const searchForm = document.getElementById('searchForm');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const successModal = document.getElementById('successModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        // Status Steps Elements
+        const stepInit = document.getElementById('step-init');
+        const stepScrape = document.getElementById('step-scrape');
+        const stepEmails = document.getElementById('step-emails');
+        const stepDb = document.getElementById('step-db');
+
+        searchForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            // Retrieve form values
+            const country = document.getElementById('country').value.trim();
+            const city = document.getElementById('city').value.trim();
+            const niche = document.getElementById('niche').value.trim();
+
+            if (!country || !city || !niche) return;
+
+            // Reset loading steps UI
+            resetSteps();
+            loadingOverlay.style.display = 'flex';
+
+            // Custom micro-animations for the progress tracker
+            const stepTimeline = [
+                { el: stepInit, delay: 0, text: 'Initializing browser automation...' },
+                { el: stepScrape, delay: 2000, text: 'Extracting business coordinates & links...' },
+                { el: stepEmails, delay: 10000, text: 'Crawling websites for contact emails...' },
+                { el: stepDb, delay: 22000, text: 'Saving to PostgreSQL & Excel...' }
+            ];
+
+            const timerIds = [];
+            stepTimeline.forEach(step => {
+                const timerId = setTimeout(() => {
+                    // Set previous steps to completed
+                    stepTimeline.forEach(prev => {
+                        if (prev.delay < step.delay) {
+                            setStepCompleted(prev.el);
+                        }
+                    });
+                    setStepActive(step.el, step.text);
+                }, step.delay);
+                timerIds.push(timerId);
+            });
+
+            try {
+                // Post form data to backend
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({ country, city, niche })
+                });
+
+                // Clear ongoing step timers
+                timerIds.forEach(id => clearTimeout(id));
+
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    // Mark all steps completed
+                    setStepCompleted(stepInit);
+                    setStepCompleted(stepScrape);
+                    setStepCompleted(stepEmails);
+                    setStepCompleted(stepDb);
+
+                    setTimeout(() => {
+                        // Hide loading and show success modal
+                        loadingOverlay.style.display = 'none';
+                        successModal.style.display = 'flex';
+                    }, 600);
+                } else {
+                    const errText = await response.text();
+                    alert("Error: " + errText);
+                    loadingOverlay.style.display = 'none';
+                }
+            } catch (err) {
+                console.error(err);
+                alert("An unexpected error occurred during search.");
+                loadingOverlay.style.display = 'none';
+            }
+        });
+
+        function resetSteps() {
+            [stepInit, stepScrape, stepEmails, stepDb].forEach(el => {
+                el.className = 'status-step';
+                const icon = el.querySelector('i');
+                icon.className = 'fa-regular fa-circle';
+            });
+            setStepActive(stepInit, 'Initializing browser automation...');
+        }
+
+        function setStepActive(el, text) {
+            el.className = 'status-step active';
+            const icon = el.querySelector('i');
+            icon.className = 'fa-solid fa-circle-notch fa-spin';
+        }
+
+        function setStepCompleted(el) {
+            el.className = 'status-step completed';
+            const icon = el.querySelector('i');
+            icon.className = 'fa-solid fa-circle-check';
+        }
+
+        // Close Modal
+        closeModalBtn.addEventListener('click', () => {
+            successModal.style.display = 'none';
+            searchForm.reset();
+        });
+
+        // Download Excel File
+        downloadBtn.addEventListener('click', () => {
+            window.location.href = '/download';
+        });
+    </script>
+</body>
+</html>

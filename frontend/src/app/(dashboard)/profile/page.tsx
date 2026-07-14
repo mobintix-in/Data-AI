@@ -11,6 +11,8 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [history, setHistory] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [filterColor, setFilterColor] = useState<string>("All");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -27,7 +29,7 @@ export default function ProfilePage() {
     const fetchHistory = async () => {
       try {
         const token = localStorage.getItem("access_token");
-        const res = await fetch("http://127.0.0.1:5000/history", {
+        const res = await fetch("http://127.0.0.1:5000/api/history", {
           headers: {
             Authorization: `Bearer ${token}`
           }
@@ -136,16 +138,46 @@ export default function ProfilePage() {
         </div>
 
         {/* Search History Section */}
+        {(() => {
+            const filteredHistory = history.filter(item => {
+              if (filterColor === "All") return true;
+              return item.score_color === filterColor;
+            });
+
+            const sortedHistory = [...filteredHistory].sort((a, b) => {
+              if (!sortOrder) return 0;
+              const scoreA = a.lead_score || 0;
+              const scoreB = b.lead_score || 0;
+              if (sortOrder === "asc") return scoreA - scoreB;
+              return scoreB - scoreA;
+            });
+
+            return (
         <div className="overflow-hidden rounded-xl bg-white shadow-xl dark:bg-gray-800">
-          <div className="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">Recent Scrapes</h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">Your latest scraped leads from PostgreSQL.</p>
+          <div className="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
+            <div>
+              <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">Recent Scrapes</h3>
+              <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">Your latest scraped leads from PostgreSQL.</p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Score:</label>
+              <select 
+                  className="block w-32 rounded-md border-gray-300 py-1.5 pl-3 pr-8 text-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  value={filterColor}
+                  onChange={(e) => setFilterColor(e.target.value)}
+              >
+                  <option value="All">All</option>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+              </select>
+            </div>
           </div>
           <div className="px-4 py-5 sm:p-6 overflow-x-auto">
             {historyLoading ? (
               <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>
-            ) : history.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No scraping history found.</p>
+            ) : sortedHistory.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No scraping history found matching criteria.</p>
             ) : (
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead>
@@ -155,10 +187,21 @@ export default function ProfilePage() {
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Niche</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Location</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Email</th>
+                    <th 
+                        className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        onClick={() => setSortOrder(prev => prev === "desc" ? "asc" : "desc")}
+                    >
+                        <div className="flex items-center space-x-1">
+                            <span>Lead Score</span>
+                            {sortOrder === "asc" && <span>&uarr;</span>}
+                            {sortOrder === "desc" && <span>&darr;</span>}
+                            {!sortOrder && <span className="opacity-0 group-hover:opacity-100">&uarr;&darr;</span>}
+                        </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {history.map((item: any) => (
+                  {sortedHistory.map((item: any) => (
                     <tr key={item.id}>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-white">
                         {new Date(item.date).toLocaleDateString()}
@@ -175,6 +218,14 @@ export default function ProfilePage() {
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
                         {item.email || 'N/A'}
                       </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm font-medium">
+                        <div className="flex items-center space-x-2">
+                            <span className="text-gray-900 dark:text-white font-bold">{item.lead_score || 0}</span>
+                            {item.score_color === 'High' && <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">High</span>}
+                            {item.score_color === 'Medium' && <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">Medium</span>}
+                            {item.score_color === 'Low' && <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/30 dark:text-red-400">Low</span>}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -182,6 +233,8 @@ export default function ProfilePage() {
             )}
           </div>
         </div>
+        );
+        })()}
       </div>
     </div>
   );

@@ -21,6 +21,13 @@ class User(Base):
     last_login = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    gemini_api_key = Column(String, nullable=True)
 
     # Relationships
-    search_results = relationship("SearchResult", back_populates="user")
+    search_results = relationship("SearchResult", back_populates="user", cascade="all, delete")
+    search_history = relationship("SearchHistory", back_populates="user", cascade="all, delete")
+    saved_searches = relationship("SavedSearch", back_populates="user", cascade="all, delete")
+    notes = relationship("Note", back_populates="user", cascade="all, delete")
+    reminders = relationship("Reminder", back_populates="user", cascade="all, delete")
+    export_history = relationship("ExportHistory", back_populates="user", cascade="all, delete")
+    system_logs = relationship("SystemLog", back_populates="user", cascade="all, delete")

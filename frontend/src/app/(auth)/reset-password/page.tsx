@@ -31,13 +31,13 @@ function ResetPasswordForm() {
   const password = watch("password", "");
 
   const validationRules = [
-    { label: "Minimum 8 characters", test: (p: str) => p.length >= 8 },
-    { label: "Maximum 64 characters", test: (p: str) => p.length > 0 && p.length <= 64 },
-    { label: "Contains uppercase letter", test: (p: str) => /[A-Z]/.test(p) },
-    { label: "Contains lowercase letter", test: (p: str) => /[a-z]/.test(p) },
-    { label: "Contains number", test: (p: str) => /[0-9]/.test(p) },
-    { label: "Contains special character", test: (p: str) => /[!@#$%^&*(),.?":{}|<>]/.test(p) },
-    { label: "No spaces allowed", test: (p: str) => p.length > 0 && !p.includes(" ") },
+    { label: "Minimum 8 characters", test: (p: string) => p.length >= 8 },
+    { label: "Maximum 64 characters", test: (p: string) => p.length > 0 && p.length <= 64 },
+    { label: "Contains uppercase letter", test: (p: string) => /[A-Z]/.test(p) },
+    { label: "Contains lowercase letter", test: (p: string) => /[a-z]/.test(p) },
+    { label: "Contains number", test: (p: string) => /[0-9]/.test(p) },
+    { label: "Contains special character", test: (p: string) => /[!@#$%^&*(),.?":{}|<>]/.test(p) },
+    { label: "No spaces allowed", test: (p: string) => p.length > 0 && !p.includes(" ") },
   ];
 
   if (!token) {

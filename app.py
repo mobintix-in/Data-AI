@@ -22,9 +22,24 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+from routes.dashboard import router as dashboard_router
+from routes.leads import router as leads_router
+from routes.search_history import router as search_history_router
+from routes.saved_searches import router as saved_searches_router
+from routes.exports import router as export_router
+from routes.ai import router as ai_router
+from routes.heatmap import router as heatmap_router
+
 # Include Routers
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
-app.include_router(main_router)
+app.include_router(dashboard_router, prefix="/api/dashboard", tags=["dashboard"])
+app.include_router(leads_router, prefix="/api/leads", tags=["leads"])
+app.include_router(search_history_router, prefix="/api/search-history", tags=["search-history"])
+app.include_router(saved_searches_router, prefix="/api/saved-searches", tags=["saved-searches"])
+app.include_router(export_router, prefix="/api/exports", tags=["exports"])
+app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
+app.include_router(heatmap_router, prefix="/api/heatmap", tags=["heatmap"])
+app.include_router(main_router, prefix="/api", tags=["main"])
 
 if __name__ == '__main__':
     uvicorn.run("app:app", host="127.0.0.1", port=5000, reload=True)

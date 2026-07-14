@@ -11,6 +11,7 @@ from scraper import scrape_google_maps
 from scraper_utils import scrape_email_from_website
 from database.session import SessionLocal
 from models.search_result import SearchResult
+from models.search_history import SearchHistory
 from models.user import User
 from dependencies.auth import get_db, get_current_active_user
 from exporter import export_to_excel_buffer
@@ -55,8 +56,10 @@ def search(
             contact_person = ""
             website = lead.get("website", "")
             
+            social_media = False
+            contact_form = False
             if website:
-                email = scrape_email_from_website(website)
+                email, social_media, contact_form = scrape_email_from_website(website)
                 
             if email:
                 prefix = email.split('@')[0].lower()
@@ -69,6 +72,42 @@ def search(
             
             lead["email"] = email
             lead["contact_person"] = contact_person
+            
+            # AI Lead Score Calculation
+            score = 0
+            if website: score += 10
+            if email: score += 15
+            if lead.get("phone"): score += 10
+            
+            try:
+                if float(lead.get("rating", 0) or 0) > 4.0:
+                    score += 15
+            except:
+                pass
+                
+            try:
+                reviews_str = str(lead.get("reviews", "")).replace(',', '')
+                if reviews_str and int(reviews_str) > 100:
+                    score += 10
+            except:
+                pass
+                
+            if social_media: score += 10
+            if website and website.startswith("https"): score += 10
+            if lead.get("google_maps_verified"): score += 10
+            if contact_form: score += 10
+            if lead.get("business_active"): score += 10
+            
+            score = min(score, 100) # Cap at 100
+            
+            lead["lead_score"] = score
+            if score > 75:
+                lead["score_color"] = "High"
+            elif score >= 50:
+                lead["score_color"] = "Medium"
+            else:
+                lead["score_color"] = "Low"
+                
             return lead
 
         with ThreadPoolExecutor(max_workers=8) as executor:
@@ -77,6 +116,15 @@ def search(
         now = datetime.utcnow()
         
         try:
+            # Save the search history log
+            history_record = SearchHistory(
+                user_id=current_user.id,
+                search_params={"niche": niche, "city": city, "country": country},
+                results_count=len(scraped_leads),
+                created_at=now
+            )
+            db.add(history_record)
+            
             for lead in scraped_leads:
                 db_lead = SearchResult(
                     user_id=current_user.id,
@@ -93,7 +141,9 @@ def search(
                     phone=lead.get("phone", ""),
                     website=lead.get("website", ""),
                     email=lead.get("email", ""),
-                    contact_person=lead.get("contact_person", "")
+                    contact_person=lead.get("contact_person", ""),
+                    lead_score=lead.get("lead_score", 0),
+                    score_color=lead.get("score_color", "Low")
                 )
                 db.add(db_lead)
                 
@@ -125,7 +175,8 @@ def search(
         return JSONResponse(content={
             "status": "success",
             "message": "Search completed successfully. Your search data has been saved.",
-            "download_url": download_url
+            "download_url": download_url,
+            "leads": scraped_leads
         })
         
     except Exception as e:
@@ -165,7 +216,9 @@ def get_search_history(
                 "name": r.name,
                 "email": r.email,
                 "phone": r.phone,
-                "website": r.website
+                "website": r.website,
+                "lead_score": r.lead_score,
+                "score_color": r.score_color
             })
         return JSONResponse(content={"status": "success", "history": history})
     except Exception as e:

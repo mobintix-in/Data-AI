@@ -13,9 +13,13 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=64)
 
 # Properties to receive via API on update
-class UserUpdate(UserBase):
+class UserUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
     password: Optional[str] = Field(None, min_length=8, max_length=64)
     profile_image: Optional[str] = None
+    gemini_api_key: Optional[str] = None
 
 class GoogleLogin(BaseModel):
     token: str # ID token from Google
@@ -25,6 +29,7 @@ class UserInDBBase(UserBase):
     auth_provider: str
     google_id: Optional[str] = None
     profile_image: Optional[str] = None
+    gemini_api_key: Optional[str] = None
     role: str
     subscription_plan: str
     is_email_verified: bool

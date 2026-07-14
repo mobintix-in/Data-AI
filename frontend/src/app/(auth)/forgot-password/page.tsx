@@ -12,6 +12,7 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [resetLink, setResetLink] = useState("");
 
   const {
     register,
@@ -25,7 +26,10 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
     setError("");
     try {
-      await api.post("/auth/forgot-password", data);
+      const response = await api.post("/auth/forgot-password", data);
+      if (response.data?.reset_link) {
+        setResetLink(response.data.reset_link);
+      }
       setSuccess(true);
     } catch (err: any) {
       setError("An error occurred. Please try again.");
@@ -45,6 +49,14 @@ export default function ForgotPasswordPage() {
           <p className="text-gray-600 dark:text-gray-400">
             If an account exists for that email, we have sent password reset instructions.
           </p>
+          {resetLink && (
+            <div className="mt-4 p-4 rounded-md bg-green-50 text-green-800 text-left dark:bg-green-900/50 dark:text-green-200">
+              <p className="text-sm font-medium mb-1">Development Reset Link:</p>
+              <a href={resetLink} className="text-sm break-all underline hover:text-green-600 dark:hover:text-green-400">
+                {resetLink}
+              </a>
+            </div>
+          )}
           <Link href="/login" className="mt-4 block text-blue-600 hover:underline">
             Back to login
           </Link>

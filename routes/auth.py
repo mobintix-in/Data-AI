@@ -10,11 +10,11 @@ from config.settings import settings
 from database.session import SessionLocal
 from dependencies.auth import get_db, get_current_active_user, get_current_user
 from models.user import User
-from schemas.user import UserCreate, User as UserSchema, GoogleLogin
+from schemas.user import UserCreate, User as UserSchema, GoogleLogin, UserUpdate
 from schemas.token import Token, TokenPayload, ForgotPassword, PasswordReset
 from services.auth_service import AuthService
 from utils.security import verify_password, create_access_token, create_refresh_token, get_password_hash
-from utils.email import send_mock_email
+from utils.email import send_email
 from jose import jwt, JWTError
 
 router = APIRouter()
@@ -27,7 +27,9 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> Any:
     # Send verification email
     verify_token = create_access_token(subject=user.email, expires_delta=timedelta(hours=settings.EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS))
     verify_link = f"http://localhost:3000/verify-email?token={verify_token}"
-    send_mock_email(user.email, "Verify your email", f"Please verify your email by clicking: {verify_link}")
+    
+    email_body = f"You have signed up successfully.\n\nPlease verify your email by clicking: {verify_link}\n\nIf you did not request this sign up, please ignore."
+    send_email(user.email, "Welcome! Verify your email", email_body)
     
     return user
 
@@ -43,6 +45,9 @@ def login_access_token(db: Session = Depends(get_db), form_data: OAuth2PasswordR
     # Update last login
     user.last_login = datetime.utcnow()
     db.commit()
+
+    # Send login success email
+    send_email(user.email, "Login Successful", "You have logged in successfully.")
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
@@ -93,6 +98,27 @@ def read_user_me(current_user: User = Depends(get_current_active_user)) -> Any:
     """Get current user."""
     return current_user
 
+@router.put("/me", response_model=UserSchema)
+def update_user_me(
+    *,
+    db: Session = Depends(get_db),
+    user_in: UserUpdate,
+    current_user: User = Depends(get_current_active_user)
+) -> Any:
+    """Update current user."""
+    if user_in.first_name is not None:
+        current_user.first_name = user_in.first_name
+    if user_in.last_name is not None:
+        current_user.last_name = user_in.last_name
+    if user_in.profile_image is not None:
+        current_user.profile_image = user_in.profile_image
+    if user_in.gemini_api_key is not None:
+        current_user.gemini_api_key = user_in.gemini_api_key
+    
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
 @router.post("/refresh", response_model=Token)
 def refresh_token(refresh_token: str = Body(..., embed=True), db: Session = Depends(get_db)) -> Any:
     """Refresh access token."""
@@ -120,7 +146,8 @@ def forgot_password(req: ForgotPassword, db: Session = Depends(get_db)) -> Any:
     if user:
         reset_token = create_access_token(subject=user.email, expires_delta=timedelta(hours=settings.PASSWORD_RESET_TOKEN_EXPIRE_HOURS))
         reset_link = f"http://localhost:3000/reset-password?token={reset_token}"
-        send_mock_email(user.email, "Password Reset Request", f"Reset your password here: {reset_link}")
+        send_email(user.email, "Password Reset Request", f"Reset your password here: {reset_link}")
+        return {"msg": "If your email is registered, you will receive a password recovery link.", "reset_link": reset_link}
     return {"msg": "If your email is registered, you will receive a password recovery link."}
 
 @router.post("/reset-password")

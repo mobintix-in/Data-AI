@@ -160,6 +160,19 @@ def scrape_google_maps(niche, city, country):
                 except:
                     pass
                     
+                google_maps_verified = True
+                try:
+                    claim_elements = driver.find_elements(By.XPATH, "//*[contains(@aria-label, 'Claim this business') or contains(text(), 'Claim this business') or contains(@href, 'business.google.com/add')]")
+                    if claim_elements:
+                        google_maps_verified = False
+                except:
+                    pass
+
+                business_active = True
+                page_text = driver.page_source.lower()
+                if "permanently closed" in page_text or "temporarily closed" in page_text:
+                    business_active = False
+
                 scraped_leads.append({
                     "name": name,
                     "rating": rating,
@@ -168,7 +181,9 @@ def scrape_google_maps(niche, city, country):
                     "niche_size": niche_size,
                     "address": address,
                     "phone": phone,
-                    "website": website
+                    "website": website,
+                    "google_maps_verified": google_maps_verified,
+                    "business_active": business_active
                 })
             except Exception as ex:
                 print(f"Error extracting business profile details at {url}: {ex}")

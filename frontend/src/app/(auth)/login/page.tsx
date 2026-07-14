@@ -33,7 +33,7 @@ export default function LoginPage() {
       formData.append("username", data.email);
       formData.append("password", data.password);
 
-      const res = await api.post("/auth/login", formData, {
+      const res = await api.post("/auth/login", formData.toString(), {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
       });
       localStorage.setItem("access_token", res.data.access_token);

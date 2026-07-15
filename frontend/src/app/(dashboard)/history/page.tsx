@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Play, Star, MoreHorizontal, Trash } from 'lucide-react';
 import { api } from '@/services/api';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export default function SearchHistoryPage() {
+  const router = useRouter();
+
   const { data, isLoading } = useQuery({
     queryKey: ['search-history'],
     queryFn: async () => {
@@ -94,7 +97,17 @@ export default function SearchHistoryPage() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      const params = new URLSearchParams();
+                      if (item.search_params?.niche) params.append('niche', item.search_params.niche);
+                      if (item.search_params?.city) params.append('city', item.search_params.city);
+                      if (item.search_params?.country) params.append('country', item.search_params.country);
+                      router.push(`/search?${params.toString()}`);
+                    }}
+                  >
                     <Play className="h-4 w-4 mr-2" />
                     Run Again
                   </Button>

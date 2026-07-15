@@ -173,6 +173,16 @@ def scrape_google_maps(niche, city, country):
                 if "permanently closed" in page_text or "temporarily closed" in page_text:
                     business_active = False
 
+                lat, lng = None, None
+                current_url = driver.current_url
+                match = re.search(r'!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)', current_url)
+                if match:
+                    lat, lng = match.groups()
+                else:
+                    match = re.search(r'@(-?\d+\.\d+),(-?\d+\.\d+)', current_url)
+                    if match:
+                        lat, lng = match.groups()
+
                 scraped_leads.append({
                     "name": name,
                     "rating": rating,
@@ -183,7 +193,9 @@ def scrape_google_maps(niche, city, country):
                     "phone": phone,
                     "website": website,
                     "google_maps_verified": google_maps_verified,
-                    "business_active": business_active
+                    "business_active": business_active,
+                    "lat": lat,
+                    "lng": lng
                 })
             except Exception as ex:
                 print(f"Error extracting business profile details at {url}: {ex}")

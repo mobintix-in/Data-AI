@@ -84,6 +84,14 @@ export default function HeatmapComponent({ leads }: { leads: LeadMarker[] }) {
               <div className="font-sans">
                 <strong className="block text-base mb-1">{lead.name}</strong>
                 <span className="text-sm text-gray-500">{lead.category}</span>
+                <a 
+                  href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(lead.name + ' ' + lead.category)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3 py-2 w-full mt-3"
+                >
+                  View Photos
+                </a>
               </div>
             </Popup>
           </CircleMarker>

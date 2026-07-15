@@ -1,12 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import dynamic from 'next/dynamic';
+import { Skeleton } from '@/components/ui/skeleton';
+import { MapPin, List } from 'lucide-react';
+
+const HeatmapComponent = dynamic(
+  () => import('../heatmap/HeatmapComponent'),
+  { 
+    ssr: false,
+    loading: () => <Skeleton className="w-full h-[600px] rounded-md" />
+  }
+);
 
 export default function SearchPage() {
   const [country, setCountry] = useState("");
@@ -16,6 +27,16 @@ export default function SearchPage() {
   const [error, setError] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [downloadUrl, setDownloadUrl] = useState("");
+  const [showMap, setShowMap] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('country')) setCountry(params.get('country') as string);
+      if (params.get('city')) setCity(params.get('city') as string);
+      if (params.get('niche')) setNiche(params.get('niche') as string);
+    }
+  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,22 +137,38 @@ export default function SearchPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Results ({results.length})</CardTitle>
-            {downloadUrl && (
-              <Button variant="outline" onClick={() => {
-                const a = document.createElement('a');
-                a.href = downloadUrl;
-                a.download = 'search_results.xlsx';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-              }}>
-                Download Excel
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowMap(!showMap)}>
+                {showMap ? <><List className="mr-2 h-4 w-4" /> View List</> : <><MapPin className="mr-2 h-4 w-4" /> View Map</>}
               </Button>
-            )}
+              {downloadUrl && (
+                <Button variant="outline" onClick={() => {
+                  const a = document.createElement('a');
+                  a.href = downloadUrl;
+                  a.download = 'search_results.xlsx';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                }}>
+                  Download Excel
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
+            {showMap ? (
+              <div className="h-[600px] w-full rounded-md overflow-hidden border">
+                <HeatmapComponent leads={results.filter(r => r.lat && r.lng).map((r, i) => ({
+                  id: r.id || i,
+                  name: r.name,
+                  lat: parseFloat(r.lat),
+                  lng: parseFloat(r.lng),
+                  category: niche
+                }))} />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
@@ -154,6 +191,7 @@ export default function SearchPage() {
                 ))}
               </TableBody>
             </Table>
+            )}
           </CardContent>
         </Card>
       )}

@@ -117,20 +117,30 @@ export default function DashboardPage() {
             <div className="space-y-4">
               {recentSearches && recentSearches.length > 0 ? (
                 recentSearches.map((search: any) => (
-                  <div key={search.id} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-full bg-blue-100 p-2 dark:bg-blue-900/30">
-                        <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <div 
+                      key={search.id} 
+                      className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0 cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
+                      onClick={() => {
+                        const params = new URLSearchParams();
+                        if (search.search_params?.niche) params.append('niche', search.search_params.niche);
+                        if (search.search_params?.city) params.append('city', search.search_params.city);
+                        if (search.search_params?.country) params.append('country', search.search_params.country);
+                        window.location.href = `/search?${params.toString()}`;
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-full bg-blue-100 p-2 dark:bg-blue-900/30">
+                          <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">
+                            {search.search_params?.niche || 'Any'} in {search.search_params?.city || 'Any City'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(search.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">
-                          {search.search_params?.niche || 'Any'} in {search.search_params?.city || 'Any City'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(search.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
                     <div className="text-sm font-medium bg-secondary text-secondary-foreground px-2 py-1 rounded-md">
                       {search.results_count} results
                     </div>

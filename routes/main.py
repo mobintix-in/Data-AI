@@ -143,7 +143,10 @@ def search(
                     email=lead.get("email", ""),
                     contact_person=lead.get("contact_person", ""),
                     lead_score=lead.get("lead_score", 0),
-                    score_color=lead.get("score_color", "Low")
+                    score_color=lead.get("score_color", "Low"),
+                    latitude=lead.get("lat"),
+                    longitude=lead.get("lng"),
+                    category=niche
                 )
                 db.add(db_lead)
                 

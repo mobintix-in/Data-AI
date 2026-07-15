@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export default function SavedSearchesPage() {
+  const router = useRouter();
   const { data, isLoading } = useQuery({
     queryKey: ['saved-searches'],
     queryFn: async () => {
@@ -35,6 +37,35 @@ export default function SavedSearchesPage() {
       queryClient.invalidateQueries({ queryKey: ['saved-searches'] });
     }
   });
+
+  const handleShare = async (item: any) => {
+    const params = new URLSearchParams();
+    if (item.filters?.niche) params.append('niche', item.filters.niche);
+    if (item.filters?.city) params.append('city', item.filters.city);
+    if (item.filters?.country) params.append('country', item.filters.country);
+    
+    const searchUrl = `${window.location.origin}/search?${params.toString()}`;
+    
+    const filterText = Object.entries(item.filters || {})
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(', ');
+    const text = `Check out this search: ${item.name} - ${filterText}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: item.name,
+          text: text,
+          url: searchUrl
+        });
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else {
+      navigator.clipboard.writeText(`${text}\nLink: ${searchUrl}`);
+      alert('Search details and link copied to clipboard!');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -78,7 +109,7 @@ export default function SavedSearchesPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleShare(item)}>
                         <Share className="h-4 w-4 mr-2" /> Share
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
@@ -97,7 +128,13 @@ export default function SavedSearchesPage() {
                   ))}
                 </div>
 
-                <Button className="w-full">
+                <Button className="w-full" onClick={() => {
+                  const params = new URLSearchParams();
+                  if (item.filters?.niche) params.append('niche', item.filters.niche);
+                  if (item.filters?.city) params.append('city', item.filters.city);
+                  if (item.filters?.country) params.append('country', item.filters.country);
+                  router.push(`/search?${params.toString()}`);
+                }}>
                   <Play className="h-4 w-4 mr-2" />
                   Run Search Again
                 </Button>

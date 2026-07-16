@@ -1,5 +1,5 @@
 import os
-import google.generativeai as genai
+from google import genai
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -30,21 +30,22 @@ def generate_summary(
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-pro')
-
-    prompt = f"""
-    Act as a B2B sales expert. Write a short, professional 2-3 sentence summary about this business lead.
-    Highlight why they might be a good prospect based on this info:
-    Name: {lead.name}
-    Category: {lead.category}
-    Rating: {lead.rating} from {lead.reviews} reviews
-    City: {lead.city}, {lead.country}
-    Has Website: {'Yes' if lead.website else 'No'}
-    """
-
     try:
-        response = model.generate_content(prompt)
+        client = genai.Client(api_key=api_key)
+        prompt = f"""
+        Act as a B2B sales expert. Write a short, professional 2-3 sentence summary about this business lead.
+        Highlight why they might be a good prospect based on this info:
+        Name: {lead.name}
+        Category: {lead.category}
+        Rating: {lead.rating} from {lead.reviews} reviews
+        City: {lead.city}, {lead.country}
+        Has Website: {'Yes' if lead.website else 'No'}
+        """
+
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+        )
         summary = response.text
         
         lead.ai_summary = summary

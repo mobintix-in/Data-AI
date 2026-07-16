@@ -90,3 +90,24 @@ def update_lead_status(
     db.refresh(lead)
     
     return lead
+
+@router.get("/{lead_id}/timeline")
+def get_lead_timeline(
+    lead_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get the timeline for a specific lead."""
+    lead = db.query(SearchResult).filter(SearchResult.id == lead_id, SearchResult.user_id == current_user.id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    return [
+        {
+            "id": t.id,
+            "status": t.status,
+            "notes": t.notes,
+            "created_at": t.created_at
+        }
+        for t in lead.timelines
+    ]
